@@ -8,9 +8,7 @@ import {
   Cpu, 
   User, 
   Loader2, 
-  Sparkles,
-  CornerDownLeft,
-  Command
+  Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AIMessage } from '@/types';
@@ -152,10 +150,9 @@ export function AICommandPanel({ projectId }: AICommandPanelProps) {
             disabled={isStreaming}
           />
           <div className="absolute right-2 bottom-2 flex items-center gap-2">
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Command className="w-3 h-3" />
-              <CornerDownLeft className="w-3 h-3" />
-            </div>
+            <kbd className="pointer-events-none h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 flex text-muted-foreground">
+              <span className="text-xs">⌘</span>↵
+            </kbd>
             <Button 
               type="submit" 
               size="sm" 
