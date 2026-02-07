@@ -1,13 +1,15 @@
+import { useState } from 'react';
 import { Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/state/auth.store';
+import { useCommandPalette } from '@/hooks/useKeyboardShortcuts';
+import { CommandPalette } from '@/components/command/CommandPalette';
 import { 
   LayoutDashboard, 
-  FolderKanban, 
   Activity, 
   Settings, 
   LogOut,
-  Terminal,
-  Cpu
+  Cpu,
+  Command
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -26,6 +28,9 @@ const navItems = [
 export function AppLayout() {
   const { isAuthenticated, logout } = useAuthStore();
   const location = useLocation();
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  useCommandPalette(() => setCommandPaletteOpen(true));
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -33,6 +38,12 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background flex">
+      {/* Command Palette */}
+      <CommandPalette 
+        open={commandPaletteOpen} 
+        onOpenChange={setCommandPaletteOpen} 
+      />
+
       {/* Sidebar */}
       <aside className="w-16 bg-sidebar border-r border-sidebar-border flex flex-col items-center py-4 fixed h-full z-50">
         {/* Logo */}
@@ -41,6 +52,26 @@ export function AppLayout() {
             <Cpu className="w-5 h-5 text-primary-foreground" />
           </div>
         </Link>
+
+        {/* Command Palette Button */}
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCommandPaletteOpen(true)}
+              className="w-10 h-10 mb-4 text-sidebar-foreground hover:bg-sidebar-accent"
+            >
+              <Command className="w-5 h-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="bg-popover flex items-center gap-2">
+            <span>Command Palette</span>
+            <kbd className="pointer-events-none h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 flex">
+              <span className="text-xs">⌘</span>K
+            </kbd>
+          </TooltipContent>
+        </Tooltip>
 
         {/* Navigation */}
         <nav className="flex-1 flex flex-col gap-2">
