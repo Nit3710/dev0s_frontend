@@ -5,7 +5,11 @@ import {
   ActionPlan, 
   AuditLog, 
   Settings,
-  ApiResponse 
+  ApiResponse,
+  PlanStep,
+  FileChange,
+  ExecutionStatus,
+  Priority
 } from '@/types';
 
 // Mock delay helper
@@ -106,12 +110,13 @@ const mockFileTree: FileNode[] = [
 const mockAuditLogs: AuditLog[] = [
   {
     id: '1',
-    action: 'changes_applied',
+    action: 'plan_executed',
     description: 'Applied refactoring to Button component',
     timestamp: new Date(Date.now() - 1000 * 60 * 5),
     status: 'success',
     projectId: '1',
     filesAffected: ['/src/components/Button.tsx', '/src/components/Button.test.tsx'],
+    duration: 3500,
   },
   {
     id: '2',
@@ -131,12 +136,13 @@ const mockAuditLogs: AuditLog[] = [
   },
   {
     id: '4',
-    action: 'changes_rolled_back',
+    action: 'plan_rolled_back',
     description: 'Rolled back changes to auth module',
     timestamp: new Date(Date.now() - 1000 * 60 * 60),
     status: 'rolled_back',
     projectId: '1',
     filesAffected: ['/src/hooks/useAuth.ts'],
+    duration: 2100,
   },
   {
     id: '5',
@@ -146,6 +152,46 @@ const mockAuditLogs: AuditLog[] = [
     status: 'failed',
     projectId: '1',
     filesAffected: ['/src/App.tsx'],
+    error: {
+      code: 'MERGE_CONFLICT',
+      message: 'Merge conflict detected in App.tsx at line 15',
+      stack: 'Error: Merge conflict\n    at FileOperation.apply (/app/src/operations.js:45:12)',
+    },
+  },
+  {
+    id: '6',
+    action: 'file_approved',
+    description: 'Approved file change: Button.tsx',
+    timestamp: new Date(Date.now() - 1000 * 60 * 25),
+    status: 'success',
+    projectId: '1',
+    fileChangeId: 'fc1',
+    filesAffected: ['/src/components/Button.tsx'],
+  },
+  {
+    id: '7',
+    action: 'step_failed',
+    description: 'Step "Run Tests" failed: Test suite failed',
+    timestamp: new Date(Date.now() - 1000 * 60 * 30),
+    status: 'failed',
+    projectId: '1',
+    stepId: 'step5',
+    error: {
+      code: 'TEST_FAILURE',
+      message: '2 tests failed in Button.test.tsx',
+    },
+  },
+  {
+    id: '8',
+    action: 'backup_created',
+    description: 'Created backup before applying changes',
+    timestamp: new Date(Date.now() - 1000 * 60 * 35),
+    status: 'success',
+    projectId: '1',
+    metadata: {
+      backupPath: '/backups/backup_123456.tar.gz',
+      filesCount: 5,
+    },
   },
 ];
 
@@ -203,80 +249,233 @@ export const devosApi = {
   // Action Plans
   async getActionPlan(planId: string): Promise<ApiResponse<ActionPlan>> {
     await delay(200);
+    
+    // Mock file changes
+    const mockFileChanges: FileChange[] = [
+      {
+        id: 'fc1',
+        operation: 'modify',
+        filePath: '/src/components/Button.tsx',
+        status: 'pending' as ExecutionStatus,
+        diff: [
+          {
+            id: 'chunk1',
+            startLine: 1,
+            endLine: 20,
+            lines: [
+              { type: 'context', content: "import React from 'react';", oldLineNumber: 1, newLineNumber: 1 },
+              { type: 'removed', content: "interface ButtonProps {", oldLineNumber: 2 },
+              { type: 'removed', content: "  onClick: () => void;", oldLineNumber: 3 },
+              { type: 'removed', content: "  children: React.ReactNode;", oldLineNumber: 4 },
+              { type: 'removed', content: "}", oldLineNumber: 5 },
+              { type: 'added', content: "interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {", newLineNumber: 2 },
+              { type: 'added', content: "  variant?: 'primary' | 'secondary' | 'ghost';", newLineNumber: 3 },
+              { type: 'added', content: "  size?: 'sm' | 'md' | 'lg';", newLineNumber: 4 },
+              { type: 'added', content: "  isLoading?: boolean;", newLineNumber: 5 },
+              { type: 'added', content: "}", newLineNumber: 6 },
+              { type: 'context', content: "", oldLineNumber: 6, newLineNumber: 7 },
+            ],
+          },
+        ],
+        metadata: {
+          size: 2048,
+          linesAdded: 5,
+          linesRemoved: 4,
+          fileType: 'typescript',
+          encoding: 'utf-8',
+        },
+      },
+      {
+        id: 'fc2',
+        operation: 'create',
+        filePath: '/src/components/Button.test.tsx',
+        status: 'pending' as ExecutionStatus,
+        diff: [
+          {
+            id: 'chunk2',
+            startLine: 1,
+            endLine: 15,
+            lines: [
+              { type: 'added', content: "import { render, screen, fireEvent } from '@testing-library/react';", newLineNumber: 1 },
+              { type: 'added', content: "import { Button } from './Button';", newLineNumber: 2 },
+              { type: 'added', content: "", newLineNumber: 3 },
+              { type: 'added', content: "describe('Button', () => {", newLineNumber: 4 },
+              { type: 'added', content: "  it('renders correctly', () => {", newLineNumber: 5 },
+              { type: 'added', content: "    render(<Button>Click me</Button>);", newLineNumber: 6 },
+              { type: 'added', content: "    expect(screen.getByText('Click me')).toBeInTheDocument();", newLineNumber: 7 },
+              { type: 'added', content: "  });", newLineNumber: 8 },
+              { type: 'added', content: "});", newLineNumber: 9 },
+            ],
+          },
+        ],
+        metadata: {
+          size: 512,
+          linesAdded: 9,
+          linesRemoved: 0,
+          fileType: 'typescript',
+          encoding: 'utf-8',
+        },
+      },
+    ];
+
+    // Mock plan steps
+    const mockSteps: PlanStep[] = [
+      {
+        id: 'step1',
+        type: 'analysis',
+        title: 'Analyze Current Button Implementation',
+        description: 'Review existing Button component structure and dependencies',
+        status: 'pending' as ExecutionStatus,
+        priority: 'medium' as Priority,
+        dependencies: [],
+        fileChanges: [],
+        metadata: {
+          estimatedDuration: 30,
+          riskLevel: 'low',
+          requiresUserConfirmation: false,
+          canRollback: true,
+        },
+      },
+      {
+        id: 'step2',
+        type: 'backup',
+        title: 'Create Backup',
+        description: 'Create backup of current files before making changes',
+        status: 'pending' as ExecutionStatus,
+        priority: 'high' as Priority,
+        dependencies: ['step1'],
+        fileChanges: [],
+        metadata: {
+          estimatedDuration: 10,
+          riskLevel: 'low',
+          requiresUserConfirmation: false,
+          canRollback: true,
+        },
+      },
+      {
+        id: 'step3',
+        type: 'file_operation',
+        title: 'Update Button Component',
+        description: 'Refactor Button component with new variants and TypeScript types',
+        status: 'pending' as ExecutionStatus,
+        priority: 'high' as Priority,
+        dependencies: ['step2'],
+        fileChanges: [mockFileChanges[0]],
+        metadata: {
+          estimatedDuration: 60,
+          riskLevel: 'medium',
+          requiresUserConfirmation: true,
+          canRollback: true,
+        },
+      },
+      {
+        id: 'step4',
+        type: 'file_operation',
+        title: 'Add Unit Tests',
+        description: 'Create comprehensive unit tests for Button component',
+        status: 'pending' as ExecutionStatus,
+        priority: 'medium' as Priority,
+        dependencies: ['step3'],
+        fileChanges: [mockFileChanges[1]],
+        metadata: {
+          estimatedDuration: 45,
+          riskLevel: 'low',
+          requiresUserConfirmation: false,
+          canRollback: true,
+        },
+      },
+      {
+        id: 'step5',
+        type: 'test',
+        title: 'Run Tests',
+        description: 'Execute test suite to verify changes work correctly',
+        status: 'pending' as ExecutionStatus,
+        priority: 'high' as Priority,
+        dependencies: ['step4'],
+        fileChanges: [],
+        metadata: {
+          estimatedDuration: 30,
+          riskLevel: 'low',
+          requiresUserConfirmation: false,
+          canRollback: false,
+        },
+      },
+    ];
+
     const mockPlan: ActionPlan = {
       id: planId,
       title: 'Refactor Button Component',
       description: 'Add variants, improve accessibility, and add proper TypeScript types',
       status: 'pending',
-      createdAt: new Date(),
-      edits: [
-        {
-          id: '1',
-          filePath: '/src/components/Button.tsx',
-          type: 'modify',
-          status: 'pending',
-          description: 'Add variant props and improve typing',
-          diff: [
-            {
-              id: 'chunk1',
-              startLine: 1,
-              endLine: 20,
-              lines: [
-                { type: 'context', content: "import React from 'react';", oldLineNumber: 1, newLineNumber: 1 },
-                { type: 'removed', content: "interface ButtonProps {", oldLineNumber: 2 },
-                { type: 'removed', content: "  onClick: () => void;", oldLineNumber: 3 },
-                { type: 'removed', content: "  children: React.ReactNode;", oldLineNumber: 4 },
-                { type: 'removed', content: "}", oldLineNumber: 5 },
-                { type: 'added', content: "interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {", newLineNumber: 2 },
-                { type: 'added', content: "  variant?: 'primary' | 'secondary' | 'ghost';", newLineNumber: 3 },
-                { type: 'added', content: "  size?: 'sm' | 'md' | 'lg';", newLineNumber: 4 },
-                { type: 'added', content: "  isLoading?: boolean;", newLineNumber: 5 },
-                { type: 'added', content: "}", newLineNumber: 6 },
-                { type: 'context', content: "", oldLineNumber: 6, newLineNumber: 7 },
-              ],
-            },
-          ],
-        },
-        {
-          id: '2',
-          filePath: '/src/components/Button.test.tsx',
-          type: 'create',
-          status: 'pending',
-          description: 'Add unit tests for Button component',
-          diff: [
-            {
-              id: 'chunk2',
-              startLine: 1,
-              endLine: 15,
-              lines: [
-                { type: 'added', content: "import { render, screen, fireEvent } from '@testing-library/react';", newLineNumber: 1 },
-                { type: 'added', content: "import { Button } from './Button';", newLineNumber: 2 },
-                { type: 'added', content: "", newLineNumber: 3 },
-                { type: 'added', content: "describe('Button', () => {", newLineNumber: 4 },
-                { type: 'added', content: "  it('renders correctly', () => {", newLineNumber: 5 },
-                { type: 'added', content: "    render(<Button>Click me</Button>);", newLineNumber: 6 },
-                { type: 'added', content: "    expect(screen.getByText('Click me')).toBeInTheDocument();", newLineNumber: 7 },
-                { type: 'added', content: "  });", newLineNumber: 8 },
-                { type: 'added', content: "});", newLineNumber: 9 },
-              ],
-            },
-          ],
-        },
-      ],
+      priority: 'medium',
+      steps: mockSteps,
+      metadata: {
+        totalFiles: 2,
+        estimatedDuration: 175, // 2 minutes 55 seconds
+        riskLevel: 'medium',
+        requiresGit: true,
+        requiresBuild: false,
+        requiresTest: true,
+      },
+      timeline: {
+        createdAt: new Date(),
+      },
+      rollback: {
+        isAvailable: true,
+        rollbackPoint: 'abc123def456', // Mock git commit hash
+      },
+      validation: {
+        preConditions: [
+          'Git repository is clean',
+          'All tests pass currently',
+          'No conflicting changes',
+        ],
+        postConditions: [
+          'Button component has new variants',
+          'TypeScript types are improved',
+          'All tests pass',
+          'No breaking changes',
+        ],
+        tests: [
+          'npm run test:unit',
+          'npm run type-check',
+          'npm run lint',
+        ],
+      },
     };
     return { data: mockPlan, status: 200 };
   },
 
   async approveActionPlan(planId: string): Promise<ApiResponse<ActionPlan>> {
     await delay(500);
+    // Return a minimal approved plan structure
     return { 
       data: { 
         id: planId, 
         title: 'Refactor Button Component',
         description: 'Changes approved and ready to apply',
         status: 'approved',
-        createdAt: new Date(),
-        edits: [],
+        priority: 'medium',
+        steps: [],
+        metadata: {
+          totalFiles: 0,
+          estimatedDuration: 0,
+          riskLevel: 'low',
+          requiresGit: false,
+          requiresBuild: false,
+          requiresTest: false,
+        },
+        timeline: {
+          createdAt: new Date(),
+        },
+        rollback: {
+          isAvailable: false,
+        },
+        validation: {
+          preConditions: [],
+          postConditions: [],
+          tests: [],
+        },
       }, 
       status: 200 
     };
@@ -284,15 +483,35 @@ export const devosApi = {
 
   async applyActionPlan(planId: string): Promise<ApiResponse<ActionPlan>> {
     await delay(1000);
+    // Return a minimal applied plan structure
     return { 
       data: { 
         id: planId,
         title: 'Refactor Button Component', 
         description: 'Changes applied successfully',
         status: 'applied',
-        createdAt: new Date(),
-        appliedAt: new Date(),
-        edits: [],
+        priority: 'medium',
+        steps: [],
+        metadata: {
+          totalFiles: 0,
+          estimatedDuration: 0,
+          riskLevel: 'low',
+          requiresGit: false,
+          requiresBuild: false,
+          requiresTest: false,
+        },
+        timeline: {
+          createdAt: new Date(),
+          appliedAt: new Date(),
+        },
+        rollback: {
+          isAvailable: true,
+        },
+        validation: {
+          preConditions: [],
+          postConditions: [],
+          tests: [],
+        },
       }, 
       status: 200 
     };
@@ -300,14 +519,35 @@ export const devosApi = {
 
   async rollbackActionPlan(planId: string): Promise<ApiResponse<ActionPlan>> {
     await delay(800);
+    // Return a minimal rolled back plan structure
     return { 
       data: { 
         id: planId,
         title: 'Refactor Button Component', 
         description: 'Changes rolled back',
         status: 'rolled_back',
-        createdAt: new Date(),
-        edits: [],
+        priority: 'medium',
+        steps: [],
+        metadata: {
+          totalFiles: 0,
+          estimatedDuration: 0,
+          riskLevel: 'low',
+          requiresGit: false,
+          requiresBuild: false,
+          requiresTest: false,
+        },
+        timeline: {
+          createdAt: new Date(),
+          rolledBackAt: new Date(),
+        },
+        rollback: {
+          isAvailable: false,
+        },
+        validation: {
+          preConditions: [],
+          postConditions: [],
+          tests: [],
+        },
       }, 
       status: 200 
     };

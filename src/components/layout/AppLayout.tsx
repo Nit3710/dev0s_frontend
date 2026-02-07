@@ -3,6 +3,7 @@ import { Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/state/auth.store';
 import { useCommandPalette } from '@/hooks/useKeyboardShortcuts';
 import { CommandPalette } from '@/components/command/CommandPalette';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { 
   LayoutDashboard, 
   Activity, 
@@ -72,6 +73,11 @@ export function AppLayout() {
             </kbd>
           </TooltipContent>
         </Tooltip>
+
+        {/* Theme Toggle */}
+        <div className="mb-4">
+          <ThemeToggle />
+        </div>
 
         {/* Navigation */}
         <nav className="flex-1 flex flex-col gap-2">

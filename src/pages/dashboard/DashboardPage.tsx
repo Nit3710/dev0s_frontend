@@ -1,13 +1,15 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjectStore } from '@/state/project.store';
 import { ProjectCard } from '@/components/project/ProjectCard';
+import { CreateProjectModal } from '@/components/project/CreateProjectModal';
 import { Button } from '@/components/ui/button';
 import { Plus, FolderKanban, Loader2 } from 'lucide-react';
 
 export function DashboardPage() {
   const { projects, fetchProjects, isLoading } = useProjectStore();
   const navigate = useNavigate();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchProjects();
@@ -15,6 +17,10 @@ export function DashboardPage() {
 
   const handleOpenProject = (projectId: string) => {
     navigate(`/workspace/${projectId}`);
+  };
+
+  const handleNewProject = () => {
+    setIsModalOpen(true);
   };
 
   return (
@@ -27,7 +33,7 @@ export function DashboardPage() {
             Select a project to open the AI workspace
           </p>
         </div>
-        <Button className="glow-primary">
+        <Button className="glow-primary" onClick={handleNewProject}>
           <Plus className="w-4 h-4 mr-2" />
           New Project
         </Button>
@@ -45,7 +51,7 @@ export function DashboardPage() {
           <p className="text-muted-foreground mb-4">
             Connect your first project to get started with DevOS
           </p>
-          <Button className="glow-primary">
+          <Button className="glow-primary" onClick={handleNewProject}>
             <Plus className="w-4 h-4 mr-2" />
             Add Project
           </Button>
@@ -61,6 +67,12 @@ export function DashboardPage() {
           ))}
         </div>
       )}
+      
+      {/* Create Project Modal */}
+      <CreateProjectModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+      />
     </div>
   );
 }

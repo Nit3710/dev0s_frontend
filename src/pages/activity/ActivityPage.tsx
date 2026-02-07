@@ -22,10 +22,22 @@ const actionIcons: Record<AuditAction, typeof ActivityIcon> = {
   plan_created: GitBranch,
   plan_approved: CheckCircle2,
   plan_rejected: XCircle,
+  plan_executed: CheckCircle2,
+  plan_rolled_back: RotateCcw,
+  file_approved: CheckCircle2,
+  file_rejected: XCircle,
+  file_applied: CheckCircle2,
+  file_rollback: RotateCcw,
+  step_started: Clock,
+  step_completed: CheckCircle2,
+  step_failed: XCircle,
   changes_applied: CheckCircle2,
   changes_rolled_back: RotateCcw,
   file_indexed: FileCode,
   error: AlertCircle,
+  validation_failed: AlertCircle,
+  backup_created: FileCode,
+  backup_restored: FileCode,
 };
 
 const statusConfig: Record<AuditStatus, { label: string; className: string }> = {
@@ -33,6 +45,7 @@ const statusConfig: Record<AuditStatus, { label: string; className: string }> = 
   failed: { label: 'Failed', className: 'text-destructive border-destructive/30' },
   rolled_back: { label: 'Rolled Back', className: 'text-warning border-warning/30' },
   pending: { label: 'Pending', className: 'text-muted-foreground border-muted/30' },
+  running: { label: 'Running', className: 'text-primary border-primary/30' },
 };
 
 function LogItem({ log }: { log: AuditLog }) {
@@ -47,6 +60,7 @@ function LogItem({ log }: { log: AuditLog }) {
         log.status === 'failed' && 'bg-destructive/10',
         log.status === 'rolled_back' && 'bg-warning/10',
         log.status === 'pending' && 'bg-muted',
+        log.status === 'running' && 'bg-primary/10',
       )}>
         <Icon className={cn(
           'w-5 h-5',
@@ -54,6 +68,7 @@ function LogItem({ log }: { log: AuditLog }) {
           log.status === 'failed' && 'text-destructive',
           log.status === 'rolled_back' && 'text-warning',
           log.status === 'pending' && 'text-muted-foreground',
+          log.status === 'running' && 'text-primary',
         )} />
       </div>
       
@@ -87,11 +102,38 @@ function LogItem({ log }: { log: AuditLog }) {
 }
 
 export function ActivityPage() {
-  const { auditLogs, fetchAuditLogs } = useProjectStore();
+  const { auditLogs, fetchAuditLogs, isLoading, error } = useProjectStore();
 
   useEffect(() => {
-    fetchAuditLogs('1');
-  }, [fetchAuditLogs]);
+    console.log('ActivityPage: Fetching audit logs...');
+    fetchAuditLogs('1').catch(err => {
+      console.error('ActivityPage: Failed to fetch audit logs:', err);
+    });
+  }, []);
+
+  console.log('ActivityPage: Render state:', { auditLogs: auditLogs.length, isLoading, error });
+
+  if (error) {
+    return (
+      <div className="min-h-screen p-8">
+        <div className="panel p-8 text-center">
+          <h3 className="text-lg font-medium text-destructive mb-2">Error Loading Activity</h3>
+          <p className="text-muted-foreground">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen p-8">
+        <div className="panel p-8 text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading activity...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-8">

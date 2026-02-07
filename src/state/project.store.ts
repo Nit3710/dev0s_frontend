@@ -64,13 +64,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   fetchAuditLogs: async (projectId: string) => {
+    set({ isLoading: true, error: null });
     try {
       const response = await devosApi.getAuditLogs(projectId);
       if (response.data) {
-        set({ auditLogs: response.data });
+        set({ auditLogs: response.data, isLoading: false });
       }
     } catch (error) {
       console.error('Failed to fetch audit logs:', error);
+      set({ error: 'Failed to fetch audit logs', isLoading: false });
     }
   },
 

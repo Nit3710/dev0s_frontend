@@ -37,20 +37,110 @@ export interface AIMessage {
   actionPlan?: ActionPlan;
 }
 
-// Action Plan Types
-export type ActionPlanStatus = 'planning' | 'pending' | 'approved' | 'applying' | 'applied' | 'rejected' | 'rolled_back';
+// Enhanced Action Plan State Model
+export type ExecutionStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'rollback_pending' | 'rollback_running' | 'rollback_completed';
+export type StepType = 'analysis' | 'planning' | 'validation' | 'backup' | 'file_operation' | 'test' | 'cleanup';
+export type FileOperationType = 'create' | 'modify' | 'delete' | 'rename' | 'copy' | 'move';
+export type Priority = 'low' | 'medium' | 'high' | 'critical';
+
+export interface PlanStep {
+  id: string;
+  type: StepType;
+  title: string;
+  description: string;
+  status: ExecutionStatus;
+  priority: Priority;
+  dependencies: string[]; // Step IDs that must complete first
+  fileChanges: FileChange[];
+  metadata: {
+    estimatedDuration?: number; // in seconds
+    riskLevel: 'low' | 'medium' | 'high';
+    requiresUserConfirmation: boolean;
+    canRollback: boolean;
+  };
+  startedAt?: Date;
+  completedAt?: Date;
+  errorMessage?: string;
+  progress?: number; // 0-100
+}
+
+export interface FileChange {
+  id: string;
+  operation: FileOperationType;
+  filePath: string;
+  newPath?: string; // For rename/move operations
+  status: ExecutionStatus;
+  backupPath?: string;
+  checksum?: string; // For integrity verification
+  diff: DiffChunk[];
+  metadata: {
+    size: number;
+    linesAdded: number;
+    linesRemoved: number;
+    fileType: string;
+    encoding?: string;
+  };
+  appliedAt?: Date;
+  rollbackAt?: Date;
+  errorMessage?: string;
+}
+
+export interface PlanSummary {
+  totalSteps: number;
+  completedSteps: number;
+  totalFileChanges: number;
+  completedFileChanges: number;
+  estimatedDuration: number;
+  actualDuration?: number;
+  riskLevel: 'low' | 'medium' | 'high';
+  canRollback: boolean;
+  requiresUserAction: boolean;
+  failedSteps: string[];
+  pendingSteps: string[];
+}
 
 export interface ActionPlan {
   id: string;
   title: string;
   description: string;
   status: ActionPlanStatus;
-  edits: CodeEdit[];
-  createdAt: Date;
-  appliedAt?: Date;
+  priority: Priority;
+  steps: PlanStep[];
+  metadata: {
+    totalFiles: number;
+    estimatedDuration: number; // in seconds
+    riskLevel: 'low' | 'medium' | 'high';
+    requiresGit: boolean;
+    requiresBuild: boolean;
+    requiresTest: boolean;
+  };
+  timeline: {
+    createdAt: Date;
+    startedAt?: Date;
+    completedAt?: Date;
+    appliedAt?: Date;
+    rolledBackAt?: Date;
+  };
+  rollback: {
+    isAvailable: boolean;
+    rollbackPlan?: ActionPlan; // Nested plan for rollback
+    rollbackPoint?: string; // Git commit hash or backup identifier
+  };
+  validation: {
+    preConditions: string[];
+    postConditions: string[];
+    tests: string[];
+  };
+  error?: {
+    code: string;
+    message: string;
+    stepId?: string;
+    fileChangeId?: string;
+  };
 }
 
-// Code Edit Types
+// Legacy types for backward compatibility
+export type ActionPlanStatus = 'planning' | 'pending' | 'approved' | 'applying' | 'applied' | 'rejected' | 'rolled_back';
 export type EditType = 'create' | 'modify' | 'delete' | 'rename';
 export type EditStatus = 'pending' | 'approved' | 'rejected' | 'applied';
 
@@ -61,7 +151,7 @@ export interface CodeEdit {
   status: EditStatus;
   diff: DiffChunk[];
   description?: string;
-  newPath?: string; // For rename operations
+  newPath?: string;
 }
 
 // Diff Types
@@ -83,8 +173,29 @@ export interface DiffChunk {
 }
 
 // Audit Log Types
-export type AuditAction = 'ai_response' | 'plan_created' | 'plan_approved' | 'plan_rejected' | 'changes_applied' | 'changes_rolled_back' | 'file_indexed' | 'error';
-export type AuditStatus = 'success' | 'failed' | 'rolled_back' | 'pending';
+export type AuditAction = 
+  | 'ai_response' 
+  | 'plan_created' 
+  | 'plan_approved' 
+  | 'plan_rejected' 
+  | 'plan_executed'
+  | 'plan_rolled_back'
+  | 'file_approved'
+  | 'file_rejected'
+  | 'file_applied'
+  | 'file_rollback'
+  | 'step_started'
+  | 'step_completed'
+  | 'step_failed'
+  | 'changes_applied'
+  | 'changes_rolled_back'
+  | 'file_indexed'
+  | 'error'
+  | 'validation_failed'
+  | 'backup_created'
+  | 'backup_restored';
+
+export type AuditStatus = 'success' | 'failed' | 'rolled_back' | 'pending' | 'running';
 
 export interface AuditLog {
   id: string;
@@ -94,7 +205,15 @@ export interface AuditLog {
   status: AuditStatus;
   projectId: string;
   filesAffected?: string[];
+  stepId?: string;
+  fileChangeId?: string;
+  error?: {
+    code: string;
+    message: string;
+    stack?: string;
+  };
   metadata?: Record<string, unknown>;
+  duration?: number; // in milliseconds
 }
 
 // Settings Types

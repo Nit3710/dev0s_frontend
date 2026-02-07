@@ -1,39 +1,20 @@
 import { useAIStore } from '@/state/ai.store';
-import { DiffViewer } from '@/components/diff/DiffViewer';
+import { StructuredDiffViewer } from '@/components/diff/StructuredDiffViewer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   GitBranch, 
   Check, 
-  X, 
   Play, 
   RotateCcw,
-  FileCode,
-  FilePlus,
-  FileX,
-  FilePen,
   Loader2,
   CheckCircle2,
-  XCircle,
-  AlertCircle
+  Clock,
+  AlertTriangle,
+  Zap,
+  Target
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { CodeEdit, ActionPlanStatus } from '@/types';
-
-const editTypeIcons = {
-  create: FilePlus,
-  modify: FilePen,
-  delete: FileX,
-  rename: FileCode,
-};
-
-const editTypeLabels = {
-  create: 'Create',
-  modify: 'Modify',
-  delete: 'Delete',
-  rename: 'Rename',
-};
+import { ActionPlanStatus, ExecutionStatus } from '@/types';
 
 const statusConfig: Record<ActionPlanStatus, { label: string; className: string }> = {
   planning: { label: 'Planning...', className: 'text-info' },
@@ -45,79 +26,25 @@ const statusConfig: Record<ActionPlanStatus, { label: string; className: string 
   rolled_back: { label: 'Rolled Back', className: 'text-muted-foreground' },
 };
 
-function EditItem({ edit }: { edit: CodeEdit }) {
-  const { approveEdit, rejectEdit } = useAIStore();
-  const Icon = editTypeIcons[edit.type];
-
-  return (
-    <div className="border border-border rounded-lg overflow-hidden bg-card">
-      {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-border bg-panel-header">
-        <div className="flex items-center gap-2">
-          <Icon className={cn(
-            'w-4 h-4',
-            edit.type === 'create' && 'text-success',
-            edit.type === 'delete' && 'text-destructive',
-            edit.type === 'modify' && 'text-info',
-            edit.type === 'rename' && 'text-warning',
-          )} />
-          <span className="font-mono text-xs text-foreground truncate max-w-[200px]">
-            {edit.filePath}
-          </span>
-        </div>
-        <div className="flex items-center gap-1">
-          {edit.status === 'pending' ? (
-            <>
-              <Button 
-                size="icon" 
-                variant="ghost" 
-                className="h-6 w-6 hover:bg-success/20 hover:text-success"
-                onClick={() => approveEdit(edit.id)}
-              >
-                <Check className="w-3 h-3" />
-              </Button>
-              <Button 
-                size="icon" 
-                variant="ghost" 
-                className="h-6 w-6 hover:bg-destructive/20 hover:text-destructive"
-                onClick={() => rejectEdit(edit.id)}
-              >
-                <X className="w-3 h-3" />
-              </Button>
-            </>
-          ) : (
-            <Badge 
-              variant="outline" 
-              className={cn(
-                'text-xs',
-                edit.status === 'approved' && 'text-success border-success/30',
-                edit.status === 'rejected' && 'text-destructive border-destructive/30',
-                edit.status === 'applied' && 'text-success border-success/30',
-              )}
-            >
-              {edit.status === 'approved' && <CheckCircle2 className="w-3 h-3 mr-1" />}
-              {edit.status === 'rejected' && <XCircle className="w-3 h-3 mr-1" />}
-              {edit.status}
-            </Badge>
-          )}
-        </div>
-      </div>
-
-      {/* Description */}
-      {edit.description && (
-        <p className="px-3 py-2 text-xs text-muted-foreground border-b border-border">
-          {edit.description}
-        </p>
-      )}
-
-      {/* Diff */}
-      <DiffViewer chunks={edit.diff} />
-    </div>
-  );
-}
+const priorityConfig: Record<string, { label: string; className: string; icon: React.ComponentType<any> }> = {
+  low: { label: 'Low', className: 'text-muted-foreground', icon: Clock },
+  medium: { label: 'Medium', className: 'text-info', icon: Target },
+  high: { label: 'High', className: 'text-warning', icon: Zap },
+  critical: { label: 'Critical', className: 'text-destructive', icon: AlertTriangle },
+};
 
 export function ActionPlanViewer() {
-  const { currentPlan, approveAllEdits, applyChanges, rollbackChanges, isProcessing } = useAIStore();
+  const { 
+    currentPlan, 
+    approveAllEdits, 
+    applyChanges, 
+    rollbackChanges, 
+    isProcessing,
+    approveFileChange,
+    rejectFileChange,
+    executePlan,
+    rollbackPlan
+  } = useAIStore();
 
   if (!currentPlan) {
     return (
@@ -132,10 +59,31 @@ export function ActionPlanViewer() {
   }
 
   const status = statusConfig[currentPlan.status];
-  const allApproved = currentPlan.edits.every(e => e.status === 'approved');
-  const someApproved = currentPlan.edits.some(e => e.status === 'approved');
-  const canApply = allApproved && currentPlan.status !== 'applied' && currentPlan.status !== 'rolled_back';
+  const allFileChanges = currentPlan.steps.flatMap((step) => step.fileChanges);
+  const approvedFiles = allFileChanges.filter(f => f.status === 'completed').length;
+  const totalFiles = allFileChanges.length;
+  const canApply = approvedFiles === totalFiles && currentPlan.status !== 'applied' && currentPlan.status !== 'rolled_back';
   const canRollback = currentPlan.status === 'applied';
+
+  const handleApproveFile = (fileChangeId: string) => {
+    // Find which step contains this file change
+    const step = currentPlan.steps.find((step) => 
+      step.fileChanges.some((change) => change.id === fileChangeId)
+    );
+    if (step) {
+      approveFileChange(step.id, fileChangeId);
+    }
+  };
+
+  const handleRejectFile = (fileChangeId: string) => {
+    // Find which step contains this file change
+    const step = currentPlan.steps.find((step) => 
+      step.fileChanges.some((change) => change.id === fileChangeId)
+    );
+    if (step) {
+      rejectFileChange(step.id, fileChangeId);
+    }
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -158,22 +106,28 @@ export function ActionPlanViewer() {
         <p className="text-sm text-muted-foreground">{currentPlan.description}</p>
         <div className="flex items-center gap-2 mt-3">
           <Badge variant="secondary">
-            {currentPlan.edits.length} {currentPlan.edits.length === 1 ? 'file' : 'files'}
+            {totalFiles} {totalFiles === 1 ? 'file' : 'files'}
           </Badge>
           <Badge variant="secondary">
-            {currentPlan.edits.filter(e => e.status === 'approved').length} approved
+            {approvedFiles} approved
           </Badge>
+          {currentPlan.priority && (
+            <Badge variant="outline" className={priorityConfig[currentPlan.priority]?.className}>
+              {priorityConfig[currentPlan.priority]?.label} Priority
+            </Badge>
+          )}
         </div>
       </div>
 
-      {/* Edits List */}
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
-          {currentPlan.edits.map((edit) => (
-            <EditItem key={edit.id} edit={edit} />
-          ))}
-        </div>
-      </ScrollArea>
+      {/* File Changes */}
+      <div className="flex-1">
+        <StructuredDiffViewer
+          fileChanges={allFileChanges}
+          onApproveFile={handleApproveFile}
+          onRejectFile={handleRejectFile}
+          className="h-full"
+        />
+      </div>
 
       {/* Actions */}
       <div className="p-4 border-t border-border space-y-2">
@@ -182,7 +136,7 @@ export function ActionPlanViewer() {
             className="w-full" 
             variant="secondary"
             onClick={approveAllEdits}
-            disabled={allApproved}
+            disabled={approvedFiles === totalFiles}
           >
             <Check className="w-4 h-4 mr-2" />
             Approve All Changes
@@ -192,7 +146,7 @@ export function ActionPlanViewer() {
         {canApply && (
           <Button 
             className="w-full glow-primary" 
-            onClick={applyChanges}
+            onClick={executePlan}
             disabled={isProcessing}
           >
             {isProcessing ? (
@@ -208,7 +162,7 @@ export function ActionPlanViewer() {
           <Button 
             className="w-full" 
             variant="destructive"
-            onClick={rollbackChanges}
+            onClick={rollbackPlan}
             disabled={isProcessing}
           >
             {isProcessing ? (
