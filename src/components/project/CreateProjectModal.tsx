@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { showSuccessToast, showErrorToast } from '@/utils/toast-utils';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -57,6 +58,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     e.preventDefault();
     
     if (!validateForm()) {
+      showErrorToast('Please fix the validation errors');
       return;
     }
 
@@ -78,9 +80,12 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
         type: 'frontend',
       });
       setErrors({});
+      
+      showSuccessToast(`Project "${formData.name}" created successfully!`);
     } catch (error) {
       console.error('Failed to create project:', error);
       setErrors({ submit: 'Failed to create project. Please try again.' });
+      showErrorToast('Failed to create project. Please try again.');
     } finally {
       setIsLoading(false);
     }

@@ -5,6 +5,7 @@ import { ProjectCard } from '@/components/project/ProjectCard';
 import { CreateProjectModal } from '@/components/project/CreateProjectModal';
 import { Button } from '@/components/ui/button';
 import { Plus, FolderKanban, Loader2 } from 'lucide-react';
+import { showSuccessToast, showErrorToast } from '@/utils/toast-utils';
 
 export function DashboardPage() {
   const { projects, fetchProjects, isLoading } = useProjectStore();
@@ -16,6 +17,7 @@ export function DashboardPage() {
   }, [fetchProjects]);
 
   const handleOpenProject = (projectId: string) => {
+    showSuccessToast(`Opening project workspace...`);
     navigate(`/workspace/${projectId}`);
   };
 

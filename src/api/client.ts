@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { handleApiError } from '@/utils/toast-utils';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -33,6 +34,9 @@ class ApiClient {
         if (error.response?.status === 401) {
           this.token = null;
           window.location.href = '/login';
+        } else if (error.response?.status >= 400) {
+          // Show toast notification for client errors
+          handleApiError(error);
         }
         return Promise.reject(error);
       }
