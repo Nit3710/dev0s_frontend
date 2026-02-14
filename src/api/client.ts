@@ -14,7 +14,7 @@ class ApiClient {
       headers: {
         'Content-Type': 'application/json',
       },
-    });
+    }); 
 
     // Request interceptor
     this.client.interceptors.request.use(
