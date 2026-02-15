@@ -7,10 +7,10 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Settings as SettingsIcon, 
-  Bot, 
-  Shield, 
+import {
+  Settings as SettingsIcon,
+  Bot,
+  Shield,
   Monitor,
   CheckCircle2,
   XCircle,
@@ -59,16 +59,16 @@ export function SettingsPage() {
   const tokenPercentage = (settings.tokenUsage.used / settings.tokenUsage.limit) * 100;
 
   return (
-    <div className="min-h-screen p-8 max-w-4xl mx-auto">
+    <div className="min-h-screen p-4 md:p-8 max-w-4xl mx-auto pb-20 md:pb-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 md:mb-8 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Settings</h1>
           <p className="text-muted-foreground mt-1">
             Configure your DevOS preferences
           </p>
         </div>
-        <Button onClick={handleSave} disabled={isSaving} className="glow-primary">
+        <Button onClick={handleSave} disabled={isSaving} className="glow-primary w-full md:w-auto">
           {isSaving ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
           ) : (
@@ -91,7 +91,7 @@ export function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {llmProviders.map((provider) => (
                 <button
                   key={provider.id}
@@ -157,12 +157,12 @@ export function SettingsPage() {
                   Allow AI to access your codebase for better suggestions
                 </p>
               </div>
-              <Switch 
+              <Switch
                 checked={settings.privacy.sendCodeContext}
-                onCheckedChange={(checked) => 
-                  setSettings({ 
-                    ...settings, 
-                    privacy: { ...settings.privacy, sendCodeContext: checked } 
+                onCheckedChange={(checked) =>
+                  setSettings({
+                    ...settings,
+                    privacy: { ...settings.privacy, sendCodeContext: checked }
                   })
                 }
               />
@@ -174,12 +174,12 @@ export function SettingsPage() {
                   Strip sensitive information before processing
                 </p>
               </div>
-              <Switch 
+              <Switch
                 checked={settings.privacy.anonymizeData}
-                onCheckedChange={(checked) => 
-                  setSettings({ 
-                    ...settings, 
-                    privacy: { ...settings.privacy, anonymizeData: checked } 
+                onCheckedChange={(checked) =>
+                  setSettings({
+                    ...settings,
+                    privacy: { ...settings.privacy, anonymizeData: checked }
                   })
                 }
               />
@@ -217,10 +217,10 @@ export function SettingsPage() {
                   )}
                 </div>
               </div>
-              <Badge 
+              <Badge
                 variant="outline"
                 className={cn(
-                  settings.ideConnection.status === 'connected' 
+                  settings.ideConnection.status === 'connected'
                     ? 'text-success border-success/30'
                     : 'text-destructive border-destructive/30'
                 )}

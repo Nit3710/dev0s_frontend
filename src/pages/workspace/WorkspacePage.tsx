@@ -27,13 +27,13 @@ export function WorkspacePage() {
   }
 
   return (
-    <div className="h-screen flex">
+    <div className="flex flex-col md:flex-row h-auto md:h-screen min-h-screen">
       {/* Left Sidebar - File Tree */}
-      <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
+      <aside className="w-full md:w-64 h-64 md:h-full bg-sidebar border-b md:border-r md:border-b-0 border-sidebar-border flex flex-col shrink-0">
         <div className="panel-header">
           <div className="flex items-center justify-between">
-            <span className="font-semibold text-foreground">{currentProject.name}</span>
-            <div className="status-dot status-dot-indexed" />
+            <span className="font-semibold text-foreground truncate px-2">{currentProject.name}</span>
+            <div className="status-dot status-dot-indexed shrink-0" />
           </div>
         </div>
         <div className="flex-1 overflow-auto">
@@ -42,12 +42,12 @@ export function WorkspacePage() {
       </aside>
 
       {/* Center - AI Command Panel */}
-      <main className="flex-1 flex flex-col bg-background">
+      <main className="flex-1 flex flex-col bg-background min-h-[600px] md:min-h-0 order-first md:order-none">
         <AICommandPanel projectId={currentProject.id} />
       </main>
 
       {/* Right Sidebar - Action Plan */}
-      <aside className="w-96 bg-sidebar border-l border-sidebar-border flex flex-col">
+      <aside className="w-full md:w-96 h-96 md:h-full bg-sidebar border-t md:border-l md:border-t-0 border-sidebar-border flex flex-col shrink-0">
         <ActionPlanViewer />
       </aside>
     </div>

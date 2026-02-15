@@ -30,7 +30,7 @@ export function LoginPage() {
       showErrorToast('Please fill in all fields');
       return;
     }
-    
+
     const success = await login(loginData);
     if (success) {
       showSuccessToast('Login successful! Welcome back to DevOS');
@@ -48,24 +48,24 @@ export function LoginPage() {
       showErrorToast('Passwords do not match');
       return;
     }
-    
+
     if (!registerData.username || !registerData.email || !registerData.password) {
       showErrorToast('Please fill in all required fields');
       return;
     }
-    
+
     // Validate password length (backend requires 6-100 characters)
     if (registerData.password.length < 6) {
       showErrorToast('Password must be between 6 and 100 characters');
       return;
     }
-    
+
     // Validate username length (backend requires 3-50 characters)
     if (registerData.username.length < 3 || registerData.username.length > 50) {
       showErrorToast('Username must be between 3 and 50 characters');
       return;
     }
-    
+
     const { confirmPassword, ...userData } = registerData;
     const success = await register(userData);
     if (success) {
@@ -139,8 +139,8 @@ export function LoginPage() {
                 />
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full glow-primary group"
                 disabled={isLoading || !loginData.username || !loginData.password}
               >
@@ -156,7 +156,7 @@ export function LoginPage() {
 
           <TabsContent value="register">
             <form onSubmit={handleRegister} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName" className="text-sm text-muted-foreground">
                     First Name
@@ -258,8 +258,8 @@ export function LoginPage() {
                 )}
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full glow-primary group"
                 disabled={isLoading || !registerData.username || !registerData.email || !registerData.password || registerData.password !== registerData.confirmPassword}
               >

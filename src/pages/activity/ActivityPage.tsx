@@ -2,10 +2,10 @@ import { useEffect } from 'react';
 import { useProjectStore } from '@/state/project.store';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Activity as ActivityIcon, 
-  CheckCircle2, 
-  XCircle, 
+import {
+  Activity as ActivityIcon,
+  CheckCircle2,
+  XCircle,
   RotateCcw,
   AlertCircle,
   FileCode,
@@ -71,7 +71,7 @@ function LogItem({ log }: { log: AuditLog }) {
           log.status === 'running' && 'text-primary',
         )} />
       </div>
-      
+
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <p className="font-medium text-foreground">{log.description}</p>
@@ -79,7 +79,7 @@ function LogItem({ log }: { log: AuditLog }) {
             {status.label}
           </Badge>
         </div>
-        
+
         {log.filesAffected && log.filesAffected.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2">
             {log.filesAffected.map((file) => (
@@ -89,7 +89,7 @@ function LogItem({ log }: { log: AuditLog }) {
             ))}
           </div>
         )}
-        
+
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <Clock className="w-3 h-3" />
           <span>{formatDistanceToNow(log.timestamp, { addSuffix: true })}</span>
@@ -136,9 +136,9 @@ export function ActivityPage() {
   }
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-4 md:p-8">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6 md:mb-8">
         <h1 className="text-2xl font-bold text-foreground">Activity Log</h1>
         <p className="text-muted-foreground mt-1">
           Track all AI actions, changes, and system events
@@ -146,7 +146,7 @@ export function ActivityPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           { label: 'Total Actions', value: auditLogs.length, icon: ActivityIcon },
           { label: 'Successful', value: auditLogs.filter(l => l.status === 'success').length, icon: CheckCircle2 },

@@ -24,18 +24,18 @@ export function DashboardPage() {
   const handleNewProject = () => {
     setIsModalOpen(true);
   };
-console.log("dashbord page is rendering..............")
+  console.log("dashbord page is rendering..............")
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-4 md:p-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 md:mb-8 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Projects</h1>
           <p className="text-muted-foreground mt-1">
             Select a project to open the AI workspace
           </p>
         </div>
-        <Button className="glow-primary" onClick={handleNewProject}>
+        <Button className="glow-primary w-full md:w-auto" onClick={handleNewProject}>
           <Plus className="w-4 h-4 mr-2" />
           New Project
         </Button>
@@ -61,19 +61,19 @@ console.log("dashbord page is rendering..............")
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((project) => (
-            <ProjectCard 
-              key={project.id} 
+            <ProjectCard
+              key={project.id}
               project={project}
               onOpen={() => handleOpenProject(project.id)}
             />
           ))}
         </div>
       )}
-      
+
       {/* Create Project Modal */}
-      <CreateProjectModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+      <CreateProjectModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
       />
     </div>
   );

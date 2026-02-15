@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Project, FileNode, AuditLog } from '@/types';
-import { projectsApi, ProjectResponse } from '@/api/projects.api';
+import { projectsApi, ProjectResponse, CreateProjectRequest } from '@/api/projects.api';
 
 interface ProjectState {
   projects: Project[];
@@ -9,13 +9,25 @@ interface ProjectState {
   auditLogs: AuditLog[];
   isLoading: boolean;
   error: string | null;
-  
+
   fetchProjects: () => Promise<void>;
+  createProject: (projectData: CreateProjectRequest) => Promise<Project>;
   selectProject: (projectId: string) => Promise<void>;
   fetchFileTree: (projectId: string) => Promise<void>;
   fetchAuditLogs: (projectId: string) => Promise<void>;
   toggleFileNode: (nodeId: string) => void;
 }
+
+// Helper function to map backend status to frontend status
+function mapBackendStatus(
+  backendStatus: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED',
+  isIndexed: boolean
+): 'indexed' | 'indexing' | 'error' | 'pending' {
+  if (backendStatus === 'ARCHIVED') return 'error';
+  if (backendStatus === 'INACTIVE') return 'pending';
+  return isIndexed ? 'indexed' : 'pending';
+}
+
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
   projects: [],
@@ -32,24 +44,53 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       console.log('Calling projectsApi.getProjects()...');
       const response = await projectsApi.getProjects();
       console.log('API response:', response);
-      
+
       // Convert backend response to frontend format
       const projects: Project[] = response.content.map((project: ProjectResponse) => ({
         id: project.id.toString(),
         name: project.name,
-        path: project.path,
-        status: project.status,
-        lastActivity: new Date(project.lastActivity),
-        fileCount: project.fileCount,
-        language: project.language,
+        path: project.localPath || project.repositoryUrl || '',
+        status: mapBackendStatus(project.status, project.isIndexed),
+        lastActivity: new Date(project.updatedAt),
+        fileCount: 0, // TODO: Get from backend when available
+        language: '', // TODO: Get from backend when available
         description: project.description || '',
       }));
-      
+
       console.log('Setting projects:', projects);
       set({ projects, isLoading: false });
     } catch (error) {
       console.error('fetchProjects error:', error);
       set({ error: 'Failed to fetch projects', isLoading: false });
+    }
+  },
+
+  createProject: async (projectData: CreateProjectRequest) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await projectsApi.createProject(projectData);
+
+      // Convert the created project to frontend format
+      const newProject: Project = {
+        id: response.id.toString(),
+        name: response.name,
+        path: response.localPath || response.repositoryUrl || '',
+        status: mapBackendStatus(response.status, response.isIndexed),
+        lastActivity: new Date(response.updatedAt),
+        fileCount: 0,
+        language: '',
+        description: response.description || '',
+      };
+
+      // Refresh the projects list
+      await get().fetchProjects();
+
+      set({ isLoading: false });
+      return newProject;
+    } catch (error) {
+      console.error('createProject error:', error);
+      set({ error: 'Failed to create project', isLoading: false });
+      throw error;
     }
   },
 
@@ -60,11 +101,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const project: Project = {
         id: response.id.toString(),
         name: response.name,
-        path: response.path,
-        status: response.status,
-        lastActivity: new Date(response.lastActivity),
-        fileCount: response.fileCount,
-        language: response.language,
+        path: response.localPath || response.repositoryUrl || '',
+        status: mapBackendStatus(response.status, response.isIndexed),
+        lastActivity: new Date(response.updatedAt),
+        fileCount: 0,
+        language: '',
         description: response.description || '',
       };
       set({ currentProject: project, isLoading: false });

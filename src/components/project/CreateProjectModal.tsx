@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { showSuccessToast, showErrorToast } from '@/utils/toast-utils';
+import { useProjectStore } from '@/state/project.store';
+import { CreateProjectRequest } from '@/api/projects.api';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -15,24 +16,18 @@ interface CreateProjectModalProps {
 
 interface ProjectFormData {
   name: string;
+  description: string;
   pathOrUrl: string;
-  type: string;
 }
 
-const PROJECT_TYPES = [
-  { value: 'frontend', label: 'Frontend' },
-  { value: 'backend', label: 'Backend' },
-  { value: 'fullstack', label: 'Full Stack' },
-  { value: 'mobile', label: 'Mobile' },
-  { value: 'ml', label: 'Machine Learning' },
-  { value: 'other', label: 'Other' },
-];
+
 
 export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps) {
+  const { createProject } = useProjectStore();
   const [formData, setFormData] = useState<ProjectFormData>({
     name: '',
+    description: '',
     pathOrUrl: '',
-    type: 'frontend',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -56,36 +51,53 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       showErrorToast('Please fix the validation errors');
       return;
     }
 
     setIsLoading(true);
-    
-    // Simulate API call
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      console.log('Project created:', formData);
-      
+      // Determine if the pathOrUrl is a Git URL or local path
+      const isGitUrl = formData.pathOrUrl.startsWith('http://') ||
+        formData.pathOrUrl.startsWith('https://') ||
+        formData.pathOrUrl.startsWith('git@');
+
+      const projectData: CreateProjectRequest = {
+        name: formData.name,
+        description: formData.description || undefined,
+        ...(isGitUrl
+          ? { repositoryUrl: formData.pathOrUrl }
+          : { localPath: formData.pathOrUrl }
+        ),
+      };
+
+      await createProject(projectData);
+
       // Close modal on success
       onClose();
-      
+
       // Reset form
       setFormData({
         name: '',
+        description: '',
         pathOrUrl: '',
-        type: 'frontend',
       });
       setErrors({});
-      
+
       showSuccessToast(`Project "${formData.name}" created successfully!`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create project:', error);
-      setErrors({ submit: 'Failed to create project. Please try again.' });
-      showErrorToast('Failed to create project. Please try again.');
+
+      let errorMessage = 'Failed to create project. Please try again.';
+      if (error.response?.status === 403) {
+        errorMessage = 'You have insufficient permissions (403 Forbidden). Please check if your user role is "VIEWER".';
+      }
+
+      setErrors({ submit: errorMessage });
+      showErrorToast(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -112,8 +124,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
       // Reset form when closing
       setFormData({
         name: '',
+        description: '',
         pathOrUrl: '',
-        type: 'frontend',
       });
       setErrors({});
     }
@@ -121,7 +133,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] w-[95%] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="w-5 h-5" />
@@ -169,23 +181,19 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
             </p>
           </div>
 
-          {/* Project Type */}
+          {/* Description */}
           <div>
-            <Label htmlFor="type" className="text-sm font-medium">
-              Project Type <span className="text-muted-foreground">(optional)</span>
+            <Label htmlFor="description" className="text-sm font-medium">
+              Description <span className="text-muted-foreground">(optional)</span>
             </Label>
-            <Select value={formData.type} onValueChange={handleInputChange('type')}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select project type" />
-              </SelectTrigger>
-              <SelectContent>
-                {PROJECT_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              id="description"
+              value={formData.description}
+              onChange={handleInputChange('description')}
+              placeholder="A brief description of your project"
+              className="mt-1"
+              disabled={isLoading}
+            />
           </div>
 
           {/* Form Error */}

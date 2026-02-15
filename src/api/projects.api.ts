@@ -4,14 +4,25 @@ import { Project } from '@/types';
 export interface ProjectResponse {
   id: number;
   name: string;
-  path: string;
+  slug?: string;
   description?: string;
-  status: 'indexed' | 'indexing' | 'error' | 'pending';
-  lastActivity: string;
-  fileCount: number;
-  language: string;
+  repositoryUrl?: string;
+  localPath: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
+  isIndexed: boolean;
+  lastIndexedAt?: string;
+  gitBranch?: string;
+  gitCommitHash?: string;
   createdAt: string;
   updatedAt: string;
+  userId: number;
+}
+
+export interface CreateProjectRequest {
+  name: string;
+  description?: string;
+  repositoryUrl?: string;
+  localPath?: string;
 }
 
 export interface PaginatedProjectsResponse {
@@ -36,7 +47,7 @@ export const projectsApi = {
   },
 
   // Create new project
-  async createProject(projectData: Partial<Project>): Promise<ProjectResponse> {
+  async createProject(projectData: CreateProjectRequest): Promise<ProjectResponse> {
     const response = await apiClient.post<ProjectResponse>('/projects', projectData);
     return response;
   },
