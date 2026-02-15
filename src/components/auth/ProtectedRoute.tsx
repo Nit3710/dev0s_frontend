@@ -1,14 +1,13 @@
-import { ReactNode } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/state/auth.store';
 
-interface ProtectedRouteProps {
-  children?: ReactNode;
-}
-
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated } = useAuthStore();
+export function ProtectedRoute() {
+  const { isAuthenticated, hasHydrated } = useAuthStore();
   const location = useLocation();
+
+  if (!hasHydrated) {
+    return null; // or loader
+  }
 
   console.log('ProtectedRoute - isAuthenticated:', isAuthenticated);
 
@@ -19,5 +18,5 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   console.log('Authenticated, rendering protected content');
-  return <>{children}</>;
+  return <Outlet />;
 }

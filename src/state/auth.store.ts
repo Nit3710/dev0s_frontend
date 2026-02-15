@@ -9,12 +9,14 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  hasHydrated: boolean; 
   error: string | null;
   login: (credentials: LoginRequest) => Promise<boolean>;
   register: (userData: RegisterRequest) => Promise<boolean>;
   logout: () => Promise<void>;
   checkAuth: () => void;
   refreshToken: () => Promise<void>;
+  setHasHydrated: (hydrated: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -24,6 +26,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+       hasHydrated: false,
 
       login: async (credentials: LoginRequest) => {
         console.log('Login attempt started for:', credentials.username);
@@ -33,9 +36,11 @@ export const useAuthStore = create<AuthState>()(
         try {
           const response = await authApi.login(credentials);
           console.log('Login API response received:', response);
+          console.log('Token from response:', response.token);
           
           // Set JWT token in API client
           apiClient.setToken(response.token);
+          console.log('Token set in API client');
           
           const user: User = {
             id: response.user.id,
@@ -53,6 +58,7 @@ export const useAuthStore = create<AuthState>()(
           });
           
           console.log('Login completed successfully');
+          console.log('Token stored in localStorage:', localStorage.getItem('devos_token'));
           return true;
         } catch (error: any) {
           console.error('Login failed:', error);
@@ -146,10 +152,13 @@ export const useAuthStore = create<AuthState>()(
         console.log('checkAuth called');
         const token = apiClient.loadToken();
         console.log('Token from storage:', token ? 'exists' : 'none');
+        console.log('Token value:', token);
         
         if (token) {
           apiClient.setToken(token);
           console.log('Token set, validating with backend...');
+          console.log('Making API call to /auth/me...');
+          
           // Optionally validate token with backend
           authApi.getCurrentUser()
             .then(userResponse => {
@@ -169,6 +178,8 @@ export const useAuthStore = create<AuthState>()(
             })
             .catch((error) => {
               console.error('Token validation failed:', error);
+              console.error('Error response:', error.response);
+              console.error('Error status:', error.response?.status);
               // Token is invalid, clear it
               apiClient.clearToken();
               set({ 
@@ -202,6 +213,10 @@ export const useAuthStore = create<AuthState>()(
           get().logout();
         }
       },
+
+      setHasHydrated: (hydrated: boolean) => {
+        set({ hasHydrated: hydrated });
+      },
     }),
     {
       name: 'devos-auth',
@@ -209,6 +224,9 @@ export const useAuthStore = create<AuthState>()(
         user: state.user, 
         isAuthenticated: state.isAuthenticated 
       }),
+        onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

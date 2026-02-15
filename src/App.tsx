@@ -19,10 +19,11 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const { checkAuth } = useAuthStore();
+  const checkAuth = useAuthStore((state) => state.checkAuth);
 
   useEffect(() => {
     // Check authentication on app startup
+    console.log("app renderingggg..........")
     checkAuth();
   }, [checkAuth]);
 
@@ -37,7 +38,7 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <SonnerToaster />
-          <BrowserRouter>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
               {/* Auth Routes */}
               <Route element={<AuthLayout />}>
@@ -56,7 +57,7 @@ const App = () => {
 
               {/* Redirects */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              
+
               {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>

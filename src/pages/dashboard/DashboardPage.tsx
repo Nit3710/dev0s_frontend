@@ -24,7 +24,7 @@ export function DashboardPage() {
   const handleNewProject = () => {
     setIsModalOpen(true);
   };
-
+console.log("dashbord page is rendering..............")
   return (
     <div className="min-h-screen p-8">
       {/* Header */}

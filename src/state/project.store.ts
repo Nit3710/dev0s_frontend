@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Project, FileNode, AuditLog } from '@/types';
-import { devosApi } from '@/api/devos.api';
+import { projectsApi, ProjectResponse } from '@/api/projects.api';
 
 interface ProjectState {
   projects: Project[];
@@ -26,13 +26,29 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   error: null,
 
   fetchProjects: async () => {
+    console.log('fetchProjects called');
     set({ isLoading: true, error: null });
     try {
-      const response = await devosApi.getProjects();
-      if (response.data) {
-        set({ projects: response.data, isLoading: false });
-      }
+      console.log('Calling projectsApi.getProjects()...');
+      const response = await projectsApi.getProjects();
+      console.log('API response:', response);
+      
+      // Convert backend response to frontend format
+      const projects: Project[] = response.content.map((project: ProjectResponse) => ({
+        id: project.id.toString(),
+        name: project.name,
+        path: project.path,
+        status: project.status,
+        lastActivity: new Date(project.lastActivity),
+        fileCount: project.fileCount,
+        language: project.language,
+        description: project.description || '',
+      }));
+      
+      console.log('Setting projects:', projects);
+      set({ projects, isLoading: false });
     } catch (error) {
+      console.error('fetchProjects error:', error);
       set({ error: 'Failed to fetch projects', isLoading: false });
     }
   },
@@ -40,13 +56,21 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   selectProject: async (projectId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await devosApi.getProject(projectId);
-      if (response.data) {
-        set({ currentProject: response.data, isLoading: false });
-        // Also fetch file tree and audit logs
-        get().fetchFileTree(projectId);
-        get().fetchAuditLogs(projectId);
-      }
+      const response = await projectsApi.getProject(projectId);
+      const project: Project = {
+        id: response.id.toString(),
+        name: response.name,
+        path: response.path,
+        status: response.status,
+        lastActivity: new Date(response.lastActivity),
+        fileCount: response.fileCount,
+        language: response.language,
+        description: response.description || '',
+      };
+      set({ currentProject: project, isLoading: false });
+      // Also fetch file tree and audit logs
+      get().fetchFileTree(projectId);
+      get().fetchAuditLogs(projectId);
     } catch (error) {
       set({ error: 'Failed to fetch project', isLoading: false });
     }
@@ -54,9 +78,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   fetchFileTree: async (projectId: string) => {
     try {
-      const response = await devosApi.getFileTree(projectId);
-      if (response.data) {
-        set({ fileTree: response.data });
+      const response = await projectsApi.getFileTree(projectId);
+      if (response) {
+        set({ fileTree: response });
       }
     } catch (error) {
       console.error('Failed to fetch file tree:', error);
@@ -66,10 +90,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   fetchAuditLogs: async (projectId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await devosApi.getAuditLogs(projectId);
-      if (response.data) {
-        set({ auditLogs: response.data, isLoading: false });
-      }
+      // For now, use mock audit logs since this endpoint might not be implemented yet
+      // TODO: Replace with real audit logs API when available
+      const mockAuditLogs: AuditLog[] = [];
+      set({ auditLogs: mockAuditLogs, isLoading: false });
     } catch (error) {
       console.error('Failed to fetch audit logs:', error);
       set({ error: 'Failed to fetch audit logs', isLoading: false });
